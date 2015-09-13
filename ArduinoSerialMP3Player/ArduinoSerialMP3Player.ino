@@ -26,6 +26,7 @@ static int8_t pre_vol, volume = 0x0f; // Volume. 0-30 DEC values. 0x0f = 15.
 
 String mp3Answer;           // Answer from the MP3.   
 
+boolean playing = false;    // Sending 'p' the module switch to Play to Pause or viceversa.   
 
 /************ Command byte **************************/
 #define CMD_NEXT_SONG     0X01  // Play next song.
@@ -90,12 +91,8 @@ void loop()
   // Check for the answer.
   if (mp3.available())
   {
-    //Serial.println("something");
     Serial.println(decodeMP3Answer());
-  }else{
-    //Serial.println("nothing");
   }
- 
   delay(100);
 }
 
@@ -110,8 +107,7 @@ void sendMP3Command(char c){
     case '?':
     case 'h':
           Serial.println("HELP  ");
-          Serial.println(" P > Play ");
-          Serial.println(" p > Pause");
+          Serial.println(" p > Play / Pause ");
           Serial.println(" n > Next");          
           Serial.println(" b > Previous");
           Serial.println(" u > Volume UP");
@@ -119,20 +115,19 @@ void sendMP3Command(char c){
       break;
                  
      
-      case 'P':
-          Serial.println("PLAY ");
-       	  sendCommand(CMD_PLAY_W_VOL, 0X0F01);//play the first song with volume 15 class
-          //sendCommand(CMD_SINGLE_CYCLE_PLAY,0x0002); //play the second song repeatedly
-          //sendCommand(CMD_FOLDER_CYCLE,0x0100);
-          //sendCommand(CMD_PLAYING_N, 0x0000); // ask for the number of file is playing
-
-          
-      break;
-
       case 'p':
-          Serial.println("pause");
-          sendCommand(CMD_PAUSE, 0); 
+          if(!playing){
+            Serial.println("Play ");
+       	    //sendCommand(CMD_PLAY_W_VOL, 0X0F01);//play the first song with volume 15 class
+            sendCommand(CMD_PLAY, 0);
+            playing = true;
+          }else{
+            Serial.println("Pause");
+            sendCommand(CMD_PAUSE, 0);
+             playing = false;           
+          }
       break;
+
       
       case 'n':
           Serial.println("Next");
@@ -163,14 +158,14 @@ void sendMP3Command(char c){
 
  
 /********************************************************************************/
-/*Function decodeMP3Answer: Decode MP3 answer. 	*/
-/*Parameter:-void                                                                                                          */
-/*Return:  volume.   -int,the range of degrees is 0~30                                                                 */
+/*Function decodeMP3Answer: Decode MP3 answer. 	                                */
+/*Parameter:-void                                                               */
+/*Return: The                                                  */
 
 String decodeMP3Answer(){
   String decodedMP3Answer="";
   
-      decodedMP3Answer+=sanswer();
+      decodedMP3Answer+=sanswer(); 
       
     //  if (ansbuf[3] == 0x4C) // currently planying
     //  {
@@ -204,11 +199,9 @@ String decodeMP3Answer(){
 
 
 /********************************************************************************/
-/*Function: Send command to the MP3	*/
-/*Parameter:-int8_t command     */
-/*Parameter:-int16_ dat  parameter for the command     */
-
-/*Return:     -int,the range of degrees is 0~280                                                                 */
+/*Function: Send command to the MP3	                                        */
+/*Parameter:-int8_t command                                                     */
+/*Parameter:-int16_ dat  parameter for the command                              */
 
 void sendCommand(int8_t command, int16_t dat)
 {
@@ -231,9 +224,9 @@ void sendCommand(int8_t command, int16_t dat)
 
 
 /********************************************************************************/
-/*Function: sbyte2hex. Returns a byte data in HEX format.	*/
-/*Parameter:- uint8_t b. Byte to convert to HEX.                                                                                                          */
-/*Return: String                                                               */
+/*Function: sbyte2hex. Returns a byte data in HEX format.	                */
+/*Parameter:- uint8_t b. Byte to convert to HEX.                                */
+/*Return: String                                                                */
 
 
 String sbyte2hex(uint8_t b)
@@ -256,9 +249,9 @@ String sbyte2hex(uint8_t b)
 
 
 /********************************************************************************/
-/*Function: sanswer. Returns a String answer from mp3 UART module.	*/
-/*Parameter:- uint8_t b. void.                                                                                                          */
-/*Return: String. If the answer is well formated answer.                                                                 */
+/*Function: sanswer. Returns a String answer from mp3 UART module.	        */
+/*Parameter:- uint8_t b. void.                                                  */
+/*Return: String. If the answer is well formated answer.                        */
 
  String sanswer(void)
 {
