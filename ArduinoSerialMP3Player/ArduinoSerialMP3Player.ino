@@ -19,12 +19,13 @@
 
 #define mp3 Serial3    // Connect the MP3 Serial Player to the Arduino MEGA Serial3 (14 TX3 -> RX, 15 RX3 -> TX)
 
-static int8_t Send_buf[8] = {0}; // Buffer for Send commands.  // BETTER LOCALLY
-static uint8_t ansbuf[10] = {0}; // Buffer for the answers.    // BETTER LOCALLY
-
+static int8_t Send_buf[8] = {0}; // Buffer for Send commands.  
+static uint8_t ansbuf[10] = {0}; // Buffer for the answers.    
+int iansbuf = 0;                 // Index for answer buffer.
+String mp3answer;                // Answer from the MP3.   
+ 
 static int8_t pre_vol, volume = 0x0f; // Volume. 0-30 DEC values. 0x0f = 15. 
 
-String mp3Answer;           // Answer from the MP3.   
 
 boolean playing = false;    // Sending 'p' the module switch to Play to Pause or viceversa.   
 
@@ -165,14 +166,13 @@ void sendMP3Command(char c){
 String decodeMP3Answer(){
   String decodedMP3Answer="";
   
-      decodedMP3Answer+=sanswer(); 
-      
-    //  if (ansbuf[3] == 0x4C) // currently planying
-    //  {
-    //    decodedMP3Answer+=" -> Playing: "+String(ansbuf[6],DEC);
-    //  }
-      
-     switch (ansbuf[3]) {
+      decodedMP3Answer+=sanswer();
+  // we have at all message? or just part of it?
+  // if iansbuf is zero is because it was reset to it when 0xEF (end) was readed.  
+   if(iansbuf==0)
+    {   
+     switch (ansbuf[3])
+     {
       case 0x3A:
          decodedMP3Answer+=" -> Memory card inserted.";
          break; 
@@ -189,7 +189,7 @@ String decodeMP3Answer(){
          decodedMP3Answer+=" -> Data recived correctly. ";
          break;     
      } 
-      
+    }  
    return decodedMP3Answer;
  }  
 
@@ -251,37 +251,65 @@ String sbyte2hex(uint8_t b)
 /********************************************************************************/
 /*Function: sanswer. Returns a String answer from mp3 UART module.	        */
 /*Parameter:- uint8_t b. void.                                                  */
-/*Return: String. If the answer is well formated answer.                        */
+/*Return: String.  the answer (partial or full).                                */
 
  String sanswer(void)
 {
-  uint8_t i = 0;
-  String mp3answer="";
   
- // Get only 10 Bytes
- while(mp3.available() && (i < 10))
-  {
-    uint8_t b = mp3.read();
-    ansbuf[i] = b;
-    i++;
+  // start to read from mp3 serial.
+  // if there are "0x7E" it's a beginning.
+  //     iansbuf=0; //  ansbuf index to zero.
+  //     ansbuf[iansbuf] = b;
+  //     mp3answer=""; 
+  //     // while there are something to read and it's not the end "0xEF"
+  //
+    // there are something and it is not a beginning.
+    // if we are not in the middle of a message we have a problem.
+      // we are in the middle of a message so let's continue.
+      //  or at the beginning, anyway go for the reads.
+      // if there are "0XEF" then we have a message.
    
-    //Serial.print(sbyte2hex(b));
-    mp3answer+=sbyte2hex(b);
-  }
- 
-  //Serial.println();
- 
-  // if the answer format is correct.
-  if ((ansbuf[0] == 0x7E) && (ansbuf[9] == 0xEF))
-  {
-    //return true;
-    return mp3answer;
-  }
- 
-  //return false;
-  return "???: "+mp3answer;
-}
- 
+
+  uint8_t b;
+  
+  // start to read from mp3 serial.
+  b = mp3.read();
+  
+  // if there are "0x7E" it's a beginning.
+  if(b == 0x7E)
+   {
+      iansbuf=0; //  ansbuf index to zero.
+      ansbuf[iansbuf] = b;
+      mp3answer="";
+      // while there are something to read and it's not the end "0xEF"
+   }
+    else  // there are something and it is not a beginning.
+   {
+    // if we are not in the middle of a message we have a problem.
+    if(iansbuf==0)
+     {
+       return "ERROR ";
+     }
+   }
+      // we are in the middle of a message so let's continue.
+      //  or at the beginning, anyway go for the reads.
+     
+      while (mp3.available() && ansbuf[iansbuf] != 0XEF)
+      {
+        iansbuf++; //  increase this index.
+        ansbuf[iansbuf] = mp3.read();
+        mp3answer+=sbyte2hex(ansbuf[iansbuf]);
+        
+      }
+      // if there are "0XEF" then we have a message.
+      if(ansbuf[iansbuf] == 0XEF)
+      {      
+         iansbuf=0;
+         
+      }       
+     
+  return mp3answer; 
+ }
  
  
  

@@ -9,4 +9,5 @@ Documentation and some Arduino code examples:
  https://andrologiciels.wordpress.com/arduino/son-et-arduino/mp3/catalex-mp3-serie/
  http://www.jarzebski.pl/arduino/komponenty/modul-mp3-z-ukladem-yx5300.html
  http://www.da-share.com/misc/catalex-mp3-board-yx5300-chip/
+ http://vwlowen.co.uk/arduino/mp3-player-2/home-mp3-player.htm YX5200-24SS
 
