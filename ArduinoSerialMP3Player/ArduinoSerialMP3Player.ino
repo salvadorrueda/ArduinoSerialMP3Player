@@ -1,7 +1,9 @@
 /***********************************************************/
 // Serial MP3 Player Catalex (YX5300 chip)
+#define mp3 Serial3    // Connect the MP3 Serial Player to the Arduino MEGA Serial3 (14 TX3 -> RX, 15 RX3 -> TX)
 
 #include "mp3serial.h"  // Default Arduino MEGA Serial3. Change this file for Arduino UNO suport.
+
 
 
 void setup() 

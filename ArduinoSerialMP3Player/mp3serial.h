@@ -50,7 +50,6 @@
 //SoftwareSerial mp3(ARDUINO_RX, ARDUINO_TX);
 
 
-#define mp3 Serial3    // Connect the MP3 Serial Player to the Arduino MEGA Serial3 (14 TX3 -> RX, 15 RX3 -> TX)
 
 
 static int8_t Send_buf[8] = {0}; // Buffer for Send commands.  
