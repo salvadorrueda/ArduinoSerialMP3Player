@@ -100,6 +100,9 @@ void loop()
 /*Return:  void                                                                */
 
 void sendMP3Command(char c) {
+  int CMD_DAT;
+  char sCMD_DAT[5]="    ";
+  
   switch (c) {
     case '?':
     case 'h':
@@ -115,11 +118,7 @@ void sendMP3Command(char c) {
       Serial.println(" v = Query volume");
       Serial.println(" x = Query folder count");
       Serial.println(" t = Query total file count");
-      Serial.println(" 1 = Play folder 1");
-      Serial.println(" 2 = Play folder 2");
-      Serial.println(" 3 = Play folder 3");
-      Serial.println(" 4 = Play folder 4");
-      Serial.println(" 5 = Play folder 5");
+      Serial.println(" f1 = Play folder 1. Try other numbers.");
       Serial.println(" S = Sleep");
       Serial.println(" W = Wake up");
       Serial.println(" r = Reset");
@@ -183,29 +182,24 @@ void sendMP3Command(char c) {
       sendCommand(CMD_QUERY_TOT_TRACKS, 0);
       break;
 
-    case '1':
-      Serial.println("Play folder 1");
-      sendCommand(CMD_FOLDER_CYCLE, 0x0101);
-      break;
+    case 'f':
+      c = ' ';
+      do{
+        if (Serial.available()) c = Serial.read();
+      }while(c == ' '); 
+      // Prevent to go further if the Serial is not available at this moment
+       
+      Serial.print("Play folder ");
+      Serial.println(c);
+      
+      //CMD_DAT 0x0101 for folder 1
+      sCMD_DAT[0] = '0';
+      sCMD_DAT[1] = c;  // number of the folder
+      sCMD_DAT[2] = '0';
+      sCMD_DAT[3] = '1';
+      CMD_DAT = shex2int(sCMD_DAT,4);
 
-    case '2':
-      Serial.println("Play folder 2");
-      sendCommand(CMD_FOLDER_CYCLE, 0x0201);
-      break;
-
-    case '3':
-      Serial.println("Play folder 3");
-      sendCommand(CMD_FOLDER_CYCLE, 0x0301);
-      break;
-
-    case '4':
-      Serial.println("Play folder 4");
-      sendCommand(CMD_FOLDER_CYCLE, 0x0401);
-      break;
-
-    case '5':
-      Serial.println("Play folder 5");
-      sendCommand(CMD_FOLDER_CYCLE, 0x0501);
+      sendCommand(CMD_FOLDER_CYCLE, CMD_DAT);
       break;
 
     case 'S':
@@ -311,7 +305,7 @@ void sendCommand(int8_t command, int16_t dat)
 
 
 /********************************************************************************/
-/*Function: sbyte2hex. Returns a byte data in HEX format.                 */
+/*Function: sbyte2hex. Returns a byte data in HEX format.                       */
 /*Parameter:- uint8_t b. Byte to convert to HEX.                                */
 /*Return: String                                                                */
 
@@ -329,6 +323,25 @@ String sbyte2hex(uint8_t b)
 }
 
 
+/********************************************************************************/
+/*Function: shex2int. Returns a int from an HEX string.                         */
+/*Parameter: s. char *s to convert to HEX.                                      */
+/*Parameter: n. char *s' length.                                                */
+/*Return: int                                                                   */
+
+int shex2int(char *s, int n){
+  int r = 0;
+  for (int i=0; i<n; i++){
+     if(s[i]>='0' && s[i]<='9'){
+      r *= 16; 
+      r +=s[i]-'0';
+     }else if(s[i]>='A' && s[i]<='F'){
+      r *= 16;
+      r += (s[i] - 'A') + 10;
+     }
+  }
+  return r;
+}
 
 
 /********************************************************************************/
