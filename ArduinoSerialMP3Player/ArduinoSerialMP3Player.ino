@@ -16,6 +16,8 @@
 #define ARDUINO_TX 6  //connect to RX of the module
 
 SoftwareSerial mp3(ARDUINO_RX, ARDUINO_TX);
+
+// Uncomment next line if you are using an Arduino Mega.
 //#define mp3 Serial3    // Connect the MP3 Serial Player to the Arduino MEGA Serial3 (14 TX3 -> RX, 15 RX3 -> TX)
 
 static int8_t Send_buf[8] = {0}; // Buffer for Send commands.  // BETTER LOCALLY
@@ -40,7 +42,7 @@ String mp3Answer;           // Answer from the MP3.
 #define CMD_PAUSE         0X0E
 #define CMD_PLAY_FOLDER_FILE 0X0F
 
-#define CMD_STOP_PLAY     0X16
+#define CMD_STOP_PLAY     0X16  // Stop playing continuously. 
 #define CMD_FOLDER_CYCLE  0X17
 #define CMD_SHUFFLE_PLAY  0x18 //
 #define CMD_SET_SNGL_CYCL 0X19 // Set single cycle.
@@ -71,6 +73,7 @@ void setup()
 
   sendCommand(CMD_SEL_DEV, DEV_TF);
   delay(500);
+  
 }
 
 
@@ -111,6 +114,7 @@ void sendMP3Command(char c) {
       Serial.println(" P = Pause");
       Serial.println(" > = Next");
       Serial.println(" < = Previous");
+      Serial.println(" s = Stop Play"); 
       Serial.println(" + = Volume UP");
       Serial.println(" - = Volume DOWN");
       Serial.println(" c = Query current file");
@@ -146,6 +150,12 @@ void sendMP3Command(char c) {
       sendCommand(CMD_PREV_SONG, 0);
       sendCommand(CMD_PLAYING_N, 0x0000); // ask for the number of file is playing
       break;
+
+    case 's':
+      Serial.println("Stop Play");
+      sendCommand(CMD_STOP_PLAY, 0);
+      break;
+
 
     case '+':
       Serial.println("Volume Up");
