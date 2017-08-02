@@ -25,6 +25,11 @@ static uint8_t ansbuf[10] = {0}; // Buffer for the answers.    // BETTER LOCALLY
 
 String mp3Answer;           // Answer from the MP3.
 
+
+String sanswer(void);
+String sbyte2hex(uint8_t b);
+
+
 /************ Command byte **************************/
 #define CMD_NEXT_SONG     0X01  // Play next song.
 #define CMD_PREV_SONG     0X02  // Play previous song.
@@ -71,7 +76,7 @@ void setup()
   mp3.begin(9600);
   delay(500);
 
-  sendCommand(CMD_SEL_DEV, DEV_TF);
+  sendCommand(CMD_SEL_DEV, 0, DEV_TF);
   delay(500);
   
 }
@@ -103,8 +108,6 @@ void loop()
 /*Return:  void                                                                */
 
 void sendMP3Command(char c) {
-  int CMD_DAT;
-  char sCMD_DAT[5]="    ";
   
   switch (c) {
     case '?':
@@ -122,7 +125,7 @@ void sendMP3Command(char c) {
       Serial.println(" v = Query volume");
       Serial.println(" x = Query folder count");
       Serial.println(" t = Query total file count");
-      Serial.println(" f1 = Play folder 1. Try other numbers.");
+      Serial.println(" f = Play folder 1.");
       Serial.println(" S = Sleep");
       Serial.println(" W = Wake up");
       Serial.println(" r = Reset");
@@ -131,100 +134,85 @@ void sendMP3Command(char c) {
 
     case 'p':
       Serial.println("Play ");
-      sendCommand(CMD_PLAY, 0);
+      sendCommand(CMD_PLAY);
       break;
 
     case 'P':
       Serial.println("Pause");
-      sendCommand(CMD_PAUSE, 0);
+      sendCommand(CMD_PAUSE);
       break;
 
     case '>':
       Serial.println("Next");
-      sendCommand(CMD_NEXT_SONG, 0);
-      sendCommand(CMD_PLAYING_N, 0x0000); // ask for the number of file is playing
+      sendCommand(CMD_NEXT_SONG);
+      sendCommand(CMD_PLAYING_N); // ask for the number of file is playing
       break;
 
     case '<':
       Serial.println("Previous");
-      sendCommand(CMD_PREV_SONG, 0);
-      sendCommand(CMD_PLAYING_N, 0x0000); // ask for the number of file is playing
+      sendCommand(CMD_PREV_SONG);
+      sendCommand(CMD_PLAYING_N); // ask for the number of file is playing
       break;
 
     case 's':
       Serial.println("Stop Play");
-      sendCommand(CMD_STOP_PLAY, 0);
+      sendCommand(CMD_STOP_PLAY);
       break;
 
 
     case '+':
       Serial.println("Volume Up");
-      sendCommand(CMD_VOLUME_UP, 0);
+      sendCommand(CMD_VOLUME_UP);
       break;
 
     case '-':
       Serial.println("Volume Down");
-      sendCommand(CMD_VOLUME_DOWN, 0);
+      sendCommand(CMD_VOLUME_DOWN);
       break;
 
     case 'c':
       Serial.println("Query current file");
-      sendCommand(CMD_PLAYING_N, 0);
+      sendCommand(CMD_PLAYING_N);
       break;
 
     case 'q':
       Serial.println("Query status");
-      sendCommand(CMD_QUERY_STATUS, 0);
+      sendCommand(CMD_QUERY_STATUS);
       break;
 
     case 'v':
       Serial.println("Query volume");
-      sendCommand(CMD_QUERY_VOLUME, 0);
+      sendCommand(CMD_QUERY_VOLUME);
       break;
 
     case 'x':
       Serial.println("Query folder count");
-      sendCommand(CMD_QUERY_FLDR_COUNT, 0);
+      sendCommand(CMD_QUERY_FLDR_COUNT);
       break;
 
     case 't':
       Serial.println("Query total file count");
-      sendCommand(CMD_QUERY_TOT_TRACKS, 0);
+      sendCommand(CMD_QUERY_TOT_TRACKS);
       break;
 
     case 'f':
-      c = ' ';
-      do{
-        if (Serial.available()) c = Serial.read();
-      }while(c == ' '); 
-      // Prevent to go further if the Serial is not available at this moment
-       
-      Serial.print("Play folder ");
-      Serial.println(c);
-      
-      //CMD_DAT 0x0101 for folder 1
-      sCMD_DAT[0] = '0';
-      sCMD_DAT[1] = c;  // number of the folder
-      sCMD_DAT[2] = '0';
-      sCMD_DAT[3] = '1';
-      CMD_DAT = shex2int(sCMD_DAT,4);
-
-      sendCommand(CMD_FOLDER_CYCLE, CMD_DAT);
+      Serial.println("Playing folder 1");
+      sendCommand(CMD_FOLDER_CYCLE, 1, 0);
       break;
 
     case 'S':
       Serial.println("Sleep");
-      sendCommand(CMD_SLEEP_MODE, 0x00);
+      sendCommand(CMD_SLEEP_MODE);
       break;
 
     case 'W':
       Serial.println("Wake up");
-      sendCommand(CMD_WAKE_UP, 0x00);
+      sendCommand(CMD_WAKE_UP);
       break;
 
     case 'r':
       Serial.println("Reset");
-      sendCommand(CMD_RESET, 0x00);
+      sendCommand(CMD_RESET);
       break;
   }
 }
@@ -288,21 +276,25 @@ String decodeMP3Answer() {
 
 
 /********************************************************************************/
-/*Function: Send command to the MP3                                         */
-/*Parameter:-int8_t command                                                     */
-/*Parameter:-int16_ dat  parameter for the command                              */
+/*Function: Send command to the MP3                                             */
+/*Parameter: byte command                                                       */
+/*Parameter: byte dat1 parameter for the command                                */
+/*Parameter: byte dat2 parameter for the command                                */
 
-void sendCommand(int8_t command, int16_t dat)
-{
+void sendCommand(byte command){
+  sendCommand(command, 0, 0);
+}
+
+void sendCommand(byte command, byte dat1, byte dat2){
   delay(20);
-  Send_buf[0] = 0x7e;   //
-  Send_buf[1] = 0xff;   //
-  Send_buf[2] = 0x06;   // Len
-  Send_buf[3] = command;//
-  Send_buf[4] = 0x01;   // 0x00 NO, 0x01 feedback
-  Send_buf[5] = (int8_t)(dat >> 8);  //datah
-  Send_buf[6] = (int8_t)(dat);       //datal
-  Send_buf[7] = 0xef;   //
+  Send_buf[0] = 0x7E;    //
+  Send_buf[1] = 0xFF;    //
+  Send_buf[2] = 0x06;    // Len
+  Send_buf[3] = command; //
+  Send_buf[4] = 0x01;    // 0x00 NO, 0x01 feedback
+  Send_buf[5] = dat1;    // datah
+  Send_buf[6] = dat2;    // datal
+  Send_buf[7] = 0xEF;    //
   Serial.print("Sending: ");
   for (uint8_t i = 0; i < 8; i++)
   {
