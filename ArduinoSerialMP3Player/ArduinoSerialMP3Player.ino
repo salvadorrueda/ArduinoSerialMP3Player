@@ -1,22 +1,20 @@
-/***********************************************************/
+/***************************************************************************************************************************/
 // Demo for the Serial MP3 Player Catalex (YX5300 chip)
 // Hardware: Serial MP3 Player *1
 // Board:  Arduino UNO
 // http://www.dx.com/p/uart-control-serial-mp3-music-player-module-for-arduino-avr-arm-pic-blue-silver-342439#.VfHyobPh5z0
 //
-//
-//
-
 
 // Uncomment SoftwareSerial for Arduino Uno or Nano.
+//#define mp3 Serial3    // Connect the MP3 Serial Player to the Arduino MEGA Serial3 (14 TX3 -> RX, 15 RX3 -> TX)
 
 #include <SoftwareSerial.h>
 
-#define ARDUINO_RX 5  //should connect to TX of the Serial MP3 Player module
-#define ARDUINO_TX 6  //connect to RX of the module
+#define ARDUINO_RX 5  //The TX pin in module should be connected to the TX in Arduino with the following pin number
+#define ARDUINO_TX 6  //The RX pin in module should be connected to the RX in Arduino with the following pin number
 
 SoftwareSerial mp3(ARDUINO_RX, ARDUINO_TX);
-
+												  
 // Uncomment next line if you are using an Arduino Mega.
 //#define mp3 Serial3    // Connect the MP3 Serial Player to the Arduino MEGA Serial3 (14 TX3 -> RX, 15 RX3 -> TX)
 
@@ -25,65 +23,64 @@ static uint8_t ansbuf[10] = {0}; // Buffer for the answers.    // BETTER LOCALLY
 
 String mp3Answer;           // Answer from the MP3.
 
-
 String sanswer(void);
 String sbyte2hex(uint8_t b);
 
 
-/************ Command byte **************************/
-#define CMD_NEXT_SONG     0X01  // Play next song.
-#define CMD_PREV_SONG     0X02  // Play previous song.
-#define CMD_PLAY_W_INDEX  0X03
-#define CMD_VOLUME_UP     0X04
-#define CMD_VOLUME_DOWN   0X05
-#define CMD_SET_VOLUME    0X06
+/******************* Command bytes **************************/
+#define CMD_NEXT_SONG         0X01  //Play next song.
+#define CMD_PREV_SONG         0X02  //Play previous song.
+#define CMD_PLAY_W_INDEX      0X03  //Play index
+#define CMD_VOLUME_UP         0X04  //Volume up
+#define CMD_VOLUME_DOWN       0X05  //Volume down
+#define CMD_SET_VOLUME        0X06  //set volume (0-30)
+                              0X07  //Reserved, uknown function
+#define CMD_SNG_CYCL_PLAY     0X08  // Single Cycle Play every song.
+#define CMD_SLEEP_MODE        0X0A  //Put mp3 in sleepmode
+#define CMD_WAKE_UP           0X0B  //Wake up mp3
+#define CMD_RESET             0X0C  //reset mp3
+#define CMD_PLAY              0X0D  //Start playing
+#define CMD_PAUSE             0X0E  //Pause palying
+#define CMD_PLAY_FOLDER_FILE  0X0F //Play song x out of folder y (Use hexidecimal number!!)
 
-#define CMD_SNG_CYCL_PLAY 0X08  // Single Cycle Play.
-#define CMD_SEL_DEV       0X09
-#define CMD_SLEEP_MODE    0X0A
-#define CMD_WAKE_UP       0X0B
-#define CMD_RESET         0X0C
-#define CMD_PLAY          0X0D
-#define CMD_PAUSE         0X0E
-#define CMD_PLAY_FOLDER_FILE 0X0F
+#define CMD_STOP_PLAY         0X16  // Stop playing continuously. 
+#define CMD_FOLDER_CYCLE      0X17  // Cycle play every song in folder f 
+#define CMD_SHUFFLE_PLAY      0x18  // Shuffle play (does not work currently)
+#define CMD_SET_SNGL_CYCL     0X19  // Set single cycle (how many times do you want to cycle?)
+#define CMD_PLAY_W_VOL        0X22  //Play song x with volume y (0-30)
 
-#define CMD_STOP_PLAY     0X16  // Stop playing continuously. 
-#define CMD_FOLDER_CYCLE  0X17
-#define CMD_SHUFFLE_PLAY  0x18 //
-#define CMD_SET_SNGL_CYCL 0X19 // Set single cycle.
+//A DAC is a circuit that allows you to translate numeric values into analog signals,
+//so you can have output voltages variable from 0 to 5V by setting only a variable.
+//If you want to do this with an Arduino different from the Due you can't without using an external chip.
+#define CMD_SET_DAC           0X1A    //Set DAC
+#define DAC_ON                0X00    //ON
+#define DAC_OFF               0X01    //OFF
 
-#define CMD_SET_DAC 0X1A
-#define DAC_ON  0X00
-#define DAC_OFF 0X01
+/**************** Query's to check status ***********************/             
+#define CMD_PLAYING_N         0x4C    //Is mp3 playing?
+#define CMD_QUERY_STATUS      0x42    //Current status of mp3?
+#define CMD_QUERY_VOLUME      0x43    //Current volume of mp3?
+#define CMD_QUERY_FLDR_TRACKS 0x4e    //How many folder and tracks?
+#define CMD_QUERY_TOT_TRACKS  0x48    //How many tracks?
+#define CMD_QUERY_FLDR_COUNT  0x4f    //How many folder?
 
-#define CMD_PLAY_W_VOL    0X22
-#define CMD_PLAYING_N     0x4C
-#define CMD_QUERY_STATUS      0x42
-#define CMD_QUERY_VOLUME      0x43
-#define CMD_QUERY_FLDR_TRACKS 0x4e
-#define CMD_QUERY_TOT_TRACKS  0x48
-#define CMD_QUERY_FLDR_COUNT  0x4f
+/********************* Select SD-Card **************************/
+#define CMD_SEL_DEV           0X09  //Select sdcard
+     #define DEV_TF                  0X02  //Check
 
-/************ Opitons **************************/
-#define DEV_TF            0X02
+/***************************************************************/
 
-
-/*********************************************************************/
-
-void setup()
-{
+void setup(){
   Serial.begin(9600);
   mp3.begin(9600);
-  delay(500);
+  delay(500);             //wait for init
 
-  sendCommand(CMD_SEL_DEV, 0, DEV_TF);
-  delay(500);
+  sendCommand(CMD_SEL_DEV, 0, DEV_TF);	//init sd-card and select	
+  delay(500);             //wait for init
   
 }
 
-
-void loop()
-{
+void loop(){
   char c = ' ';
 
   // If there a char on Serial call sendMP3Command to sendCommand
@@ -103,12 +100,12 @@ void loop()
 
 
 /********************************************************************************/
-/*Function sendMP3Command: seek for a 'c' command and send it to MP3  */
-/*Parameter: c. Code for the MP3 Command, 'h' for help.                                                                                                         */
-/*Return:  void                                                                */
+/* Function sendMP3Command: seek for a 'c' command and send it to MP3           */
+/* Parameter: c. Code for the MP3 Command, 'h' for help.                        */                                                                                           */
+/* Return:  void                                                                */
 
 void sendMP3Command(char c) {
-  
+		  
   switch (c) {
     case '?':
     case 'h':
@@ -159,7 +156,6 @@ void sendMP3Command(char c) {
       sendCommand(CMD_STOP_PLAY);
       break;
 
-
     case '+':
       Serial.println("Volume Up");
       sendCommand(CMD_VOLUME_UP);
@@ -204,7 +200,7 @@ void sendMP3Command(char c) {
       Serial.println("Sleep");
       sendCommand(CMD_SLEEP_MODE);
       break;
-
+      
     case 'W':
       Serial.println("Wake up");
       sendCommand(CMD_WAKE_UP);
@@ -218,11 +214,10 @@ void sendMP3Command(char c) {
 }
 
 
-
 /********************************************************************************/
 /*Function decodeMP3Answer: Decode MP3 answer.                                  */
 /*Parameter:-void                                                               */
-/*Return: The                                                  */
+/*Return: The answer of the mp3                                                 */
 
 String decodeMP3Answer() {
   String decodedMP3Answer = "";
@@ -243,7 +238,7 @@ String decodeMP3Answer() {
       break;
 
     case 0x41:
-      decodedMP3Answer += " -> Data recived correctly. ";
+      decodedMP3Answer += " -> Data received correctly. ";
       break;
 
     case 0x42:
@@ -271,10 +266,6 @@ String decodeMP3Answer() {
 }
 
 
-
-
-
-
 /********************************************************************************/
 /*Function: Send command to the MP3                                             */
 /*Parameter: byte command                                                       */
@@ -287,21 +278,20 @@ void sendCommand(byte command){
 
 void sendCommand(byte command, byte dat1, byte dat2){
   delay(20);
-  Send_buf[0] = 0x7E;    //
-  Send_buf[1] = 0xFF;    //
-  Send_buf[2] = 0x06;    // Len
-  Send_buf[3] = command; //
-  Send_buf[4] = 0x01;    // 0x00 NO, 0x01 feedback
-  Send_buf[5] = dat1;    // datah
-  Send_buf[6] = dat2;    // datal
-  Send_buf[7] = 0xEF;    //
+  Send_buf[0] = 0x7E;    //Open command
+  Send_buf[1] = 0xFF;    //Version info
+  Send_buf[2] = 0x06;    //Length of command excluding the open an closing bytes
+  Send_buf[3] = command; //Command
+  Send_buf[4] = 0x01;    //0x00 NO, 0x01 feedback (what does this actually do?
+  Send_buf[5] = dat1;    //datah
+  Send_buf[6] = dat2;    //datal
+  Send_buf[7] = 0xEF;    //Close command
   Serial.print("Sending: ");
-  for (uint8_t i = 0; i < 8; i++)
-  {
+  for (uint8_t i = 0; i < 8; i++)  {
     mp3.write(Send_buf[i]) ;
     Serial.print(sbyte2hex(Send_buf[i]));
   }
-  Serial.println();
+  Serial.println();       //Print white line
 }
 
 
@@ -312,8 +302,7 @@ void sendCommand(byte command, byte dat1, byte dat2){
 /*Return: String                                                                */
 
 
-String sbyte2hex(uint8_t b)
-{
+String sbyte2hex(uint8_t b){
   String shex;
 
   shex = "0X";
@@ -351,14 +340,12 @@ int shex2int(char *s, int n){
 /*Parameter:- uint8_t b. void.                                                  */
 /*Return: String. If the answer is well formated answer.                        */
 
-String sanswer(void)
-{
+String sanswer(void){
   uint8_t i = 0;
   String mp3answer = "";
 
   // Get only 10 Bytes
-  while (mp3.available() && (i < 10))
-  {
+  while (mp3.available() && (i < 10))  {
     uint8_t b = mp3.read();
     ansbuf[i] = b;
     i++;
@@ -367,8 +354,7 @@ String sanswer(void)
   }
 
   // if the answer format is correct.
-  if ((ansbuf[0] == 0x7E) && (ansbuf[9] == 0xEF))
-  {
+  if ((ansbuf[0] == 0x7E) && (ansbuf[9] == 0xEF))  {
     return mp3answer;
   }
 
